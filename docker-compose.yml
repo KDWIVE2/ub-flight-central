@@ -1,0 +1,31 @@
+services:
+  app:
+    image: myapp:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8090:8090"
+    networks:
+        - my-network
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: flight-central
+    ports:
+      - "5436:5432"
+    networks:
+        - my-network
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+networks:
+  my-network:
+    driver: bridge
+
+
+volumes:
+    postgres-data:
+      driver: local

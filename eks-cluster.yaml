@@ -1,0 +1,41 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: flight-central-cluster
+  region: us-east-1
+  version: "1.28"  # Using a stable version
+
+managedNodeGroups:
+  - name: standard-workers
+    instanceType: t3.medium
+    minSize: 1
+    maxSize: 3
+    desiredCapacity: 2
+    volumeSize: 20
+    iam:
+      withAddonPolicies:
+        autoScaler: true
+        externalDNS: true
+        certManager: true
+        appMesh: true
+        ebs: true
+        efs: true
+        albIngress: true
+        xRay: true
+        cloudWatch: true
+
+# Enable IAM OIDC Provider
+iam:
+  withOIDC: true
+
+# Basic add-ons without complex IAM requirements
+addons:
+  - name: vpc-cni
+  - name: coredns
+  - name: kube-proxy
+
+# Enable CloudWatch logging
+cloudWatch:
+  clusterLogging:
+    enableTypes: ["api", "audit", "authenticator", "controllerManager", "scheduler"]
