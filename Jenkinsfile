@@ -5,6 +5,7 @@ pipeline {
         DOCKER_IMAGE = "116981767400.dkr.ecr.us-east-1.amazonaws.com/flight-central:${env.BUILD_NUMBER}"
         KUBECONFIG = credentials('kubeconfig')
         AWS_CREDENTIALS = credentials('aws-credentials')
+        AWS_REGION = 'us-east-1'
     }
 
     stages {
@@ -13,6 +14,19 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Test AWS') {
+                    steps {
+                        withCredentials([[
+                            $class: 'AmazonWebServicesCredentialsBinding',
+                            credentialsId: 'aws-credentials',
+                            accessKeyVariable: 'AKIARWPFIDTUC263XVG3',
+                            secretKeyVariable: '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'
+                        ]]) {
+                            sh 'aws --version'
+                            sh 'aws sts get-caller-identity'
+                        }
+                    }
+                }
 
         stage('Build and Test') {
             steps {
