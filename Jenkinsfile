@@ -19,8 +19,8 @@ pipeline {
                         withCredentials([[
                             $class: 'AmazonWebServicesCredentialsBinding',
                             credentialsId: 'aws-credentials',
-                            accessKeyVariable: 'AKIARWPFIDTUC263XVG3',
-                            secretKeyVariable: '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'
+                            accessKeyVariable: 'AWS_ACCESS_KEY_ID',
+                            secretKeyVariable: 'AWS_SECRET_ACCESS_KEY'
                         ]]) {
                             sh 'aws --version'
                             sh 'aws sts get-caller-identity'
