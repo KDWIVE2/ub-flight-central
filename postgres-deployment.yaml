@@ -1,4 +1,17 @@
 # postgres-deployment.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+  labels:
+    app: postgres
+spec:
+  type: ClusterIP
+  ports:
+    - port: 5432
+  selector:
+    app: postgres
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,31 +28,35 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: postgres:latest
-          ports:
-            - port: 5436
-            - targetPort: 5432
+          image: postgres:13
           env:
+            - name: POSTGRES_INITDB_ARGS
+            - value: "--data-checksums"
+            - name: PGDATA
+            - value: /var/lib/postgresql/data/pgdata
+            - name: POSTGRES_DB
+              value: "flight_central"
             - name: POSTGRES_USER
               value: "postgres"
             - name: POSTGRES_PASSWORD
               value: "postgres"
-            - name: POSTGRES_DB
-              value: "flight-central"
+          ports:
+            - containerPort: 5432
           volumeMounts:
             - name: postgres-storage
               mountPath: /var/lib/postgresql/data
       volumes:
         - name: postgres-storage
           persistentVolumeClaim:
-            claimName: postgres-pvc
+            claimName: postgres-pv-claim
 ---
 apiVersion: v1
-kind: Service
+kind: PersistentVolumeClaim
 metadata:
-  name: postgres
+  name: postgres-pv-claim
 spec:
-  ports:
-    - port: 5432
-  selector:
-    app: postgres
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi

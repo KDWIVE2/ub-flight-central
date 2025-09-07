@@ -1,41 +1,85 @@
+---
 apiVersion: eksctl.io/v1alpha5
 kind: ClusterConfig
 
 metadata:
-  name: flight-central-cluster
+  name: flight-central
   region: us-east-1
-  version: "1.28"  # Using a stable version
+  version: "1.30"
+  tags:
+    Environment: production
+    Project: flight-central
+    ManagedBy: eksctl
+
+iam:
+  withOIDC: true
+  serviceAccounts:
+    - metadata:
+        name: ebs-csi-controller-sa
+        namespace: kube-system
+      attachPolicyARNs:
+        - arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy
+      roleName: eks-ebs-csi-controller-role
+    - metadata:
+        name: external-dns-sa
+        namespace: kube-system
+      attachPolicyARNs:
+        - arn:aws:iam::aws:policy/AmazonRoute53FullAccess
+    - metadata:
+        name: flight-central-sa
+        namespace: default
+      attachPolicyARNs:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+
+vpc:
+  cidr: 10.0.0.0/16
+  clusterEndpoints:
+    publicAccess: true
+    privateAccess: true
+  publicAccessCIDRs:
+    - 0.0.0.0/0
+  nat:
+    gateway: HighlyAvailable
 
 managedNodeGroups:
-  - name: standard-workers
-    instanceType: t3.medium
-    minSize: 1
-    maxSize: 3
-    desiredCapacity: 2
-    volumeSize: 20
+  - name: ng-1
+    instanceType: t3.small  # Changed from t3.medium to t3.small
+    desiredCapacity: 1      # Reduced from 2 to 1
+    minSize: 1              # Minimum 1 node
+    maxSize: 2              # Reduced from 5 to 2
+    volumeSize: 20          # Reduced from 50GB to 20GB
+    volumeType: gp3
+    volumeEncrypted: true
+    privateNetworking: true
     iam:
       withAddonPolicies:
         autoScaler: true
         externalDNS: true
-        certManager: true
-        appMesh: true
         ebs: true
-        efs: true
-        albIngress: true
-        xRay: true
-        cloudWatch: true
+    labels:
+      role: worker
+      environment: production
+    tags:
+      k8s.io/cluster-autoscaler/enabled: "true"
+      k8s.io/cluster-autoscaler/flight-central: "owned"
 
-# Enable IAM OIDC Provider
-iam:
-  withOIDC: true
-
-# Basic add-ons without complex IAM requirements
 addons:
   - name: vpc-cni
+    version: latest
   - name: coredns
+    version: latest
   - name: kube-proxy
+    version: latest
+  - name: aws-ebs-csi-driver
+    version: latest
+    serviceAccountRoleARN: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/eks-ebs-csi-controller-role"
+  - name: external-dns
+    version: "1.13.1"
+    serviceAccountRoleARN: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/external-dns-role"
 
-# Enable CloudWatch logging
 cloudWatch:
   clusterLogging:
     enableTypes: ["api", "audit", "authenticator", "controllerManager", "scheduler"]
+    logRetentionInDays: 30
+

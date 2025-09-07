@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: flight-central
+  labels:
+    app: flight-central
 spec:
   replicas: 2
   selector:
@@ -14,25 +16,149 @@ spec:
     spec:
       containers:
         - name: flight-central
-          image: 116981767400.dkr.ecr.us-east-1.amazonaws.com/myapp:latest
+          image: 156041400647.dkr.ecr.us-east-1.amazonaws.com/flight-central:latest
+          imagePullPolicy: Always
           ports:
-            - containerPort: 9001
+            - containerPort: 8090
           env:
+            - name: SERVER_PORT
+              value: "8090"
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "health,info,metrics"
+            - name: MANAGEMENT_ENDPOINT_HEALTH_SHOWDETAILS
+              value: "always"
+            - name: MANAGEMENT_HEALTH_PROBES_ENABLED
+              value: "true"
             - name: SPRING_DATASOURCE_URL
-              value: "jdbc:postgresql://postgres:5432/flight-central"
+              value: "jdbc:postgresql://flight-central-db.cn06ooekozzm.eu-north-1.rds.amazonaws.com:5432/flight_central?sslmode=require&ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory"
             - name: SPRING_DATASOURCE_USERNAME
               value: "postgres"
             - name: SPRING_DATASOURCE_PASSWORD
               value: "postgres"
+
+          # Generous startup window; avoids restarts while app boots/binds the port
+          startupProbe:
+            tcpSocket:
+              port: 8090
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            failureThreshold: 30   # ~5 minutes max startup
+
+          # Omit livenessProbe for now to prevent restarts during boot.
+          # Re-enable later once app is confirmed healthy.
+
+          # Readiness only checks port is listening; Service will publish endpoints only then
+          readinessProbe:
+            tcpSocket:
+              port: 8090
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 12
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "1Gi"
+
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: flight-central-service
+  labels:
+    app: flight-central
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
 spec:
   type: LoadBalancer
-  ports:
-    - port: 80
-      targetPort: 9001
   selector:
     app: flight-central
+  ports:
+    - port: 80
+      targetPort: 8090
+      protocol: TCP
+
+#apiVersion: apps/v1
+#kind: Deployment
+#metadata:
+#  name: flight-central
+#  labels:
+#    app: flight-central
+#spec:
+#  replicas: 2
+#  selector:
+#    matchLabels:
+#      app: flight-central
+#  template:
+#    metadata:
+#      labels:
+#        app: flight-central
+#    spec:
+#      containers:
+#        - name: flight-central
+#          image: 156041400647.dkr.ecr.us-east-1.amazonaws.com/flight-central:latest
+#          imagePullPolicy: Always
+#          ports:
+#            - containerPort: 8090
+#          env:
+#            - name: SERVER_PORT
+#              value: "8090"
+#            - name: SPRING_PROFILES_ACTIVE
+#              value: "prod"
+#            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+#              value: "health,info,metrics"
+#            - name: MANAGEMENT_ENDPOINT_HEALTH_SHOWDETAILS
+#              value: "always"
+#            - name: MANAGEMENT_HEALTH_PROBES_ENABLED
+#              value: "true"
+#            - name: SPRING_DATASOURCE_URL
+#              value: "jdbc:postgresql://flight-central-db.cn06ooekozzm.eu-north-1.rds.amazonaws.com:5432/flight_central?sslmode=require&ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory"
+#            - name: SPRING_DATASOURCE_USERNAME
+#              value: "postgres"
+#            - name: SPRING_DATASOURCE_PASSWORD
+#              value: "postgres"
+#
+#          # Generous startup window; avoids restarts while app boots/binds the port
+#          startupProbe:
+#            tcpSocket:
+#              port: 8090
+#            initialDelaySeconds: 60
+#            periodSeconds: 10
+#            failureThreshold: 30   # ~5 minutes max startup
+#
+#          # Keep readiness only (TCP) so Service adds endpoints when port is listening
+#          readinessProbe:
+#            tcpSocket:
+#              port: 8090
+#            initialDelaySeconds: 30
+#            periodSeconds: 10
+#            failureThreshold: 12
+#
+#          resources:
+#            requests:
+#              cpu: "100m"
+#              memory: "256Mi"
+#            limits:
+#              cpu: "500m"
+#              memory: "1Gi"
+#---
+#apiVersion: v1
+#kind: Service
+#metadata:
+#  name: flight-central-service
+#  labels:
+#    app: flight-central
+#spec:
+#  type: ClusterIP
+#  selector:
+#    app: flight-central
+#  ports:
+#    - port: 80
+#      targetPort: 8090
+#      protocol: TCP
