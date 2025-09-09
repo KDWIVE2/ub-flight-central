@@ -4,28 +4,27 @@ metadata:
   name: ingress-nginx-controller
   namespace: default
   labels:
-    app.kubernetes.io/name: ingress-nginx
-    app.kubernetes.io/instance: ingress-nginx
     app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/name: ingress-nginx
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/name: ingress-nginx
-      app.kubernetes.io/instance: ingress-nginx
       app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: ingress-nginx
+      app.kubernetes.io/name: ingress-nginx
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: ingress-nginx
-        app.kubernetes.io/instance: ingress-nginx
         app.kubernetes.io/component: controller
+        app.kubernetes.io/instance: ingress-nginx
+        app.kubernetes.io/name: ingress-nginx
     spec:
-      serviceAccountName: nginx-ingress-serviceaccount
-      serviceAccount: nginx-ingress-serviceaccount
       automountServiceAccountToken: true
       containers:
         - name: nginx-ingress-controller
           image: registry.k8s.io/ingress-nginx/controller:v1.13.2@sha256:1f7eaeb01933e719c8a9f4acd8181e555e582330c7d50f24484fb64d2ba9b2ef
+          imagePullPolicy: IfNotPresent
           args:
             - /nginx-ingress-controller
             - --election-id=ingress-nginx-leader
@@ -48,31 +47,41 @@ spec:
             - name: https
               containerPort: 443
               protocol: TCP
-          resources:
-            requests:
-              cpu: 100m
-              memory: 90Mi
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 10254
-              scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 1
-            successThreshold: 1
-            failureThreshold: 5
-          readinessProbe:
-            httpGet:
-              path: /healthz
-              port: 10254
-              scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 10
-            timeoutSeconds: 1
-            successThreshold: 1
             failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 10254
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /healthz
+              port: 10254
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            successThreshold: 1
+            timeoutSeconds: 1
           lifecycle:
             preStop:
               exec:
                 command: ["/wait-shutdown"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 90Mi
+      serviceAccountName: nginx-ingress-serviceaccount

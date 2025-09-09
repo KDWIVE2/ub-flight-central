@@ -44,6 +44,7 @@
 			<artifactId>postgresql</artifactId>
 			<version>42.4.1</version>
 		</dependency>
+
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
@@ -58,8 +59,13 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- https://mvnrepository.com/artifact/io.awspring.cloud/spring-cloud-aws-starter-secrets-manager -->
+		<dependency>
+			<groupId>io.awspring.cloud</groupId>
+			<artifactId>spring-cloud-aws-starter-secrets-manager</artifactId>
+			<version>3.4.0</version>
+		</dependency>
 	</dependencies>
-
 	<build>
 		<finalName>flight-central</finalName>
 		<plugins>
