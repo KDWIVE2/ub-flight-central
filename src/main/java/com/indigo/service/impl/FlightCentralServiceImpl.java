@@ -9,6 +9,9 @@ import com.indigo.util.MapperUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +29,7 @@ public class FlightCentralServiceImpl implements FlightCentralService {
         this.flightCentralRepository = flightCentralRepository;
     }
 
+    @Cacheable(value = "passenger", key = "#passengerId") // Cache individual passenger details by ID
     @Override
     public PassesngerDto getPassengerDetailsById(String passengerId) throws BusinessException {
         try {
@@ -38,6 +42,7 @@ public class FlightCentralServiceImpl implements FlightCentralService {
         }
     }
 
+    @Cacheable(value = "passengers") // Cache the list of all passengers
     @Override
     public List<PassesngerDto> getAllPassengers() throws BusinessException {
         try {
@@ -52,6 +57,7 @@ public class FlightCentralServiceImpl implements FlightCentralService {
         }
     }
 
+    @CacheEvict(cacheNames = "passengers", allEntries = true) // Clear all cached passengers on new addition
     @Override
     public String createPassenger(PassesngerDto passengerDto) throws BusinessException {
         try {
@@ -64,6 +70,10 @@ public class FlightCentralServiceImpl implements FlightCentralService {
         }
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "passenger", key = "#passengerId"), // Evict specific passenger cache
+            @CacheEvict(value = "passengers", allEntries = true) // Clear all cached passengers
+    })
     @Override
     public void deletePassenger(String passengerId) throws BusinessException {
         try {
